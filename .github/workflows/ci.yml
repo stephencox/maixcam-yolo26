@@ -1,0 +1,32 @@
+name: ci
+on:
+  push:
+  pull_request:
+jobs:
+  host-tests:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: extractions/setup-just@v2
+      - run: just test
+  model-tests:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      # Every test in model/tests runs. None imports export.py (ultralytics/onnx/torch), so those
+      # are not installed; eval_map imports onnxruntime only inside a function the tests do not call.
+      # Version floors match model/pyproject.toml.
+      - run: cd model && uv venv --python 3.12 && uv pip install "pytest>=8" "numpy>=1.26" "opencv-python-headless>=4.9" "pycocotools>=2.0.7" && .venv/bin/pytest -q tests
+  maixcam-build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/maixcam-yolo26
+          key: maixcdk-db6b17821b900c97eaa899be548ddc1cba0dd635
+      - run: scripts/build.sh build
+      - run: file build/yolo26_detect | grep -q RISC-V
