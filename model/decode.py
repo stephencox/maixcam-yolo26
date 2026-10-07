@@ -10,10 +10,12 @@ LOGIT_THRESHOLD = -0.2
 def letterbox(img_rgb: np.ndarray, size: int):
     h, w = img_rgb.shape[:2]
     scale = min(size / w, size / h)
-    # Board FIT_CONTAIN: cv::resize(img, tmp, cv::Size(), scale, scale,
-    # INTER_LINEAR) with a float scale; the output size follows from fx/fy.
+    # Board: NN::forward_image calls Image::resize(w, h, fit) with the default
+    # ResizeMethod::NEAREST; FIT_CONTAIN then does cv::resize(img, tmp,
+    # cv::Size(), scale, scale, INTER_NEAREST) with a float scale, so the
+    # output size follows from fx/fy. Verified byte-identical on a MaixCAM.
     f = float(np.float32(scale))
-    resized = cv2.resize(img_rgb, None, fx=f, fy=f, interpolation=cv2.INTER_LINEAR)
+    resized = cv2.resize(img_rgb, None, fx=f, fy=f, interpolation=cv2.INTER_NEAREST)
     nh, nw = resized.shape[:2]
     px, py = (size - nw) / 2.0, (size - nh) / 2.0
     canvas = np.zeros((size, size, 3), np.uint8)

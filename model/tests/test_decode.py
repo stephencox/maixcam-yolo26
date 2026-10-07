@@ -53,13 +53,14 @@ def test_clamp_to_input():
     assert x == 0 and y == 0 and w > 0 and h > 0
 
 def test_letterbox_resizes_like_board_fit_contain():
-    # Board FIT_CONTAIN: cv::resize(img, tmp, Size(), scale, scale, INTER_LINEAR)
-    # with a float32 scale, so pixel sampling follows fx/fy, not nw/w.
+    # Board: NN::forward_image -> Image::resize(w, h, fit) with the default
+    # ResizeMethod::NEAREST -> cv::resize(img, tmp, Size(), scale, scale,
+    # INTER_NEAREST) with a float32 scale (byte-identical on a MaixCAM).
     rng = np.random.default_rng(0)
     img = rng.integers(0, 256, (500, 333, 3), np.uint8)   # h=500, w=333
     x, scale, px, py = letterbox(img, 320)
     f = float(np.float32(320 / 500))
-    ref = cv2.resize(img, None, fx=f, fy=f, interpolation=cv2.INTER_LINEAR)
+    ref = cv2.resize(img, None, fx=f, fy=f, interpolation=cv2.INTER_NEAREST)
     nh, nw = ref.shape[:2]
     assert (nh, nw) == (320, 213)
     assert (scale, px, py) == (0.64, (320 - 213) / 2.0, 0.0)
