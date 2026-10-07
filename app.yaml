@@ -1,0 +1,12 @@
+id: yolo26_detect
+name: YOLO26 Detector
+name[zh]: YOLO26 物体检测
+version: 1.0.0
+icon: assets/app.png
+author: Stephen Cox
+desc: Real-time COCO object detection with YOLO26n (320 or 640), touch controls and snapshots
+desc[zh]: YOLO26n 实时物体检测（320 或 640），支持触屏调节与拍照
+files:
+  app.yaml: app.yaml
+  assets: assets
+  README.md: README.md

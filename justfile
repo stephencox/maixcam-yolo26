@@ -22,3 +22,18 @@ models size="320":
         python3 sim_detect.py --size {{size}} --list lists/$L.txt --coco /coco --out work/{{size}}/sim_$L.json; done; \
       .venv/bin/python check_map.py {{size}}'
     @echo "now run the board compare for {{size}} (model/compare_board.py; see MANIFEST.md)"
+
+board := env_var_or_default("BOARD", "maixcam")
+
+# Cross-compile the app for the MaixCAM (MaixCDK in docker)
+build:
+    scripts/build.sh build
+
+release-local:
+    scripts/build.sh release
+    ls -l dist/*.zip
+
+# Package, copy to the board, install via the app store CLI (not on PATH on the board)
+deploy: release-local
+    scp dist/yolo26_detect_v*.zip {{board}}:/tmp/yolo26_detect.zip
+    ssh {{board}} '/maixapp/apps/app_store/app_store install /tmp/yolo26_detect.zip && rm /tmp/yolo26_detect.zip'
