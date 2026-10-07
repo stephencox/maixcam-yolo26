@@ -5,6 +5,8 @@
 # steps are too coarse. Clipping the cls logits to +-8 (with or without forcing
 # the conv threshold) did not help (0.2051 / 0.1978) because the loss is inside
 # the branch. Every /model.23/ op in BF16 (--quantize_table) recovers 0.2734.
+# (Numbers above used a bilinear letterbox; with the board's nearest-neighbour
+# resize FP32 is 0.2690 and this build 0.2498.)
 # No --fuse_preprocess: the .mud mean/scale normalise input on the board
 # (nn::YOLO26::detect passes them to forward_image).
 set -euo pipefail
