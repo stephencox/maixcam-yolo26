@@ -1,0 +1,9 @@
+build/
+dist/
+test/bin/
+model/work/
+model/.venv/
+__pycache__/
+*.onnx
+*.pt
+.superpowers/
