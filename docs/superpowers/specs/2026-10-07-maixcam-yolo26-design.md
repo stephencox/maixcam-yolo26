@@ -89,9 +89,9 @@ zero; ignores non-positive durations.
 |---|---|---|
 | top-left | `< Exit` | `app::set_exit_flag(true)` |
 | top-right | `320` / `640` | switch model (§4.3) |
-| bottom-left | `conf −` / value / `conf +` | step 0.05, clamp to [0.05, 0.95], default 0.50 |
+| bottom-left | `conf −` / value / `conf +` | step 0.05, clamp to [0.45, 0.95], default 0.50 (floor: `nn::YOLO26` drops logits < −0.2, i.e. conf < 0.45, before thresholding) |
 | bottom-right | `Snapshot` | §4.4 |
-| status line | `FPS 24.1 · 38 ms · 320` | from `FpsMeter` and current model |
+| status line | `FPS 24.1 \| 38 ms \| 320` (ASCII; `-` when no data) | from `FpsMeter` and current model |
 
 Touch targets are at least 48 px tall. A press triggers on the press edge
 only (no repeat while held). Layout rectangles and hit-testing are defined in
@@ -139,10 +139,12 @@ English. All on-screen text comes from `strings.hpp`.
    be whatever `maix::nn::YOLO26` expects — determined from
    `maix_nn_yolo26.cpp` and Sipeed's YOLO26 conversion docs during
    implementation, and recorded in MANIFEST.md.
-3. **Quantise.** TPU-MLIR in a pinned Docker image:
-   `model_transform` with mean `0,0,0` and scale `1/255` fused into the model
-   so the `.mud` preprocessing values apply, then `model_deploy` to INT8 for
-   `cv181x`. Calibration: 500 COCO val2017 images chosen by a fixed seed;
+3. **Quantise.** TPU-MLIR (`tpu_mlir[onnx]==1.28.1` on `sophgo/tpuc_dev`)
+   in a pinned Docker image: `model_transform` with mean `0,0,0` and scale
+   `1/255`, then `model_deploy` to INT8 for `cv181x` **without**
+   `--fuse_preprocess` (the cat_repel contract, proven on this board).
+   `maix::nn::YOLO26::detect` passes the `.mud` mean/scale to
+   `forward_image` itself, so the `.mud` values are what normalise input. Calibration: 500 COCO val2017 images chosen by a fixed seed;
    the list of file names is committed.
 4. **Verify.**
    - Simulator: INT8 vs FP32 on a fixed set of 50 COCO val images; mAP50
