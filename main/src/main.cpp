@@ -94,15 +94,15 @@ static void draw_button(image::Image &img, const y26::Rect &r, const std::string
 }
 
 // Detection box with a filled label tab above it (inside the box top if it would leave the frame).
-static void draw_detection(image::Image &img, const nn::Object &o, const std::string &name)
+static void draw_detection(image::Image &img, const nn::Object &o, const std::string &name,
+                           std::vector<y26::Rect> &placed, int sw, int sh)
 {
     y26::Rgb c = y26::class_color(o.class_id);
     img.draw_rect(o.x, o.y, o.w, o.h, col(c), 3);
     std::string label = y26::format_label(name, o.score);
     image::Size ts = image::string_size(label);
-    y26::Rect tab{o.x, o.y - (ts.height() + 6), ts.width() + 12, ts.height() + 6};
-    if (tab.y < 0)
-        tab.y = o.y;
+    y26::Rect tab = y26::place_label_tab({o.x, o.y, o.w, o.h}, ts.width() + 12, ts.height() + 6, placed, sw, sh);
+    placed.push_back(tab);
     img.draw_rect(tab.x, tab.y, tab.w, tab.h, col(c), -1);
     img.draw_string(tab.x + 6, tab.y + 3, label, col(y26::label_text_color(c)));
 }
@@ -220,8 +220,9 @@ static int run(display::Display &disp, touchscreen::TouchScreen &ts, y26::Lang l
                 uint64_t t0 = time::ticks_us();
                 std::unique_ptr<std::vector<nn::Object>> objs(det->detect(*img, conf.value(), 0.45f));
                 infer_ms = (time::ticks_us() - t0) / 1000.0;
+                std::vector<y26::Rect> placed;
                 for (const auto &o : *objs)
-                    draw_detection(*img, o, det->labels[o.class_id]);
+                    draw_detection(*img, o, det->labels[o.class_id], placed, sw, sh);
             }
             else
             {

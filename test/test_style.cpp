@@ -61,4 +61,40 @@ TEST(format_label_rounds_and_clamps)
     CHECK_EQ(format_label("traffic light", 0.45f), std::string("traffic light 45%"));
 }
 
+static bool eq(Rect a, Rect b) { return a.x == b.x && a.y == b.y && a.w == b.w && a.h == b.h; }
+
+TEST(tab_above_by_default)
+{
+    CHECK(eq(place_label_tab({100, 100, 50, 50}, 60, 24, {}, 552, 368), Rect{100, 76, 60, 24}));
+}
+
+TEST(tab_inside_when_above_is_off_screen)
+{
+    CHECK(eq(place_label_tab({100, 10, 50, 50}, 60, 24, {}, 552, 368), Rect{100, 10, 60, 24}));
+}
+
+TEST(tab_inside_on_collision)
+{
+    std::vector<Rect> placed{{110, 70, 60, 24}};
+    CHECK(eq(place_label_tab({100, 100, 50, 50}, 60, 24, placed, 552, 368), Rect{100, 100, 60, 24}));
+}
+
+TEST(tab_inside_kept_even_if_colliding)
+{
+    std::vector<Rect> placed{{110, 70, 60, 24}, {100, 100, 60, 24}};
+    CHECK(eq(place_label_tab({100, 100, 50, 50}, 60, 24, placed, 552, 368), Rect{100, 100, 60, 24}));
+}
+
+TEST(tab_touching_is_not_collision)
+{
+    std::vector<Rect> placed{{100, 52, 60, 24}};   // ends at y=76, tab starts at 76
+    CHECK(eq(place_label_tab({100, 100, 50, 50}, 60, 24, placed, 552, 368), Rect{100, 76, 60, 24}));
+}
+
+TEST(tab_right_edge_clamp)
+{
+    CHECK(eq(place_label_tab({540, 100, 10, 50}, 60, 24, {}, 552, 368), Rect{492, 76, 60, 24}));
+    CHECK(eq(place_label_tab({-5, 100, 10, 50}, 60, 24, {}, 552, 368), Rect{0, 76, 60, 24}));
+}
+
 int main() { return check::run_all(); }

@@ -106,12 +106,11 @@ def manifest_figures():
             raise SystemExit(f"MANIFEST.md: cannot parse {what} from {cell!r}")
         return float(m.group(1))
 
-    ms320 = first_number(row("Board inference ms")[1], "320 board ms")
-    m320 = first_number(row("INT8 mAP50")[1], "320 INT8 mAP50")
-    m640 = first_number(row("INT8 mAP50")[2], "640 INT8 mAP50")
-    if ms320 <= 0 or not (0 < m320 < 1 and 0 < m640 < 1) or m640 <= m320:
-        raise SystemExit(f"MANIFEST.md: implausible figures ms={ms320} map320={m320} map640={m640}")
-    return f"~{1000.0 / ms320:.1f} fps", f"+{(m640 - m320) * 100:.1f} pts mAP50 vs 320"
+    ms = [first_number(c, f"{n} board ms") for c, n in zip(row("Board inference ms")[1:], ("320", "640"))]
+    maps = [first_number(c, f"{n} INT8 mAP50") for c, n in zip(row("INT8 mAP50")[1:], ("320", "640"))]
+    if any(m <= 0 for m in ms) or not all(0 < m < 1 for m in maps):
+        raise SystemExit(f"MANIFEST.md: implausible figures ms={ms} map={maps}")
+    return [f"~{1000.0 / m:.1f} fps \u00b7 mAP50 {a:.2f}" for m, a in zip(ms, maps)]
 
 
 # ---- cover --------------------------------------------------------------------
@@ -138,8 +137,18 @@ def draw_round(base, box, radius, fill, k=4):
     base.paste(layer, (x0, y0), rounded_mask((w, h), radius))
 
 
+def place_label_tab(box, tw, th, placed, sw):
+    """Mirror of y26::place_label_tab in main/include/style.hpp (keep in sync)."""
+    x0, y0, _, _ = box
+    x = max(0, min(x0, sw - tw))
+    above = (x, y0 - th, tw, th)
+    hit = above[1] < 0 or any(above[0] < px + pw and px < above[0] + tw and above[1] < py + ph and py < above[1] + th
+                              for px, py, pw, ph in placed)
+    return (x, y0, tw, th) if hit else above
+
+
 def render_cover():
-    fps_txt, map_txt = manifest_figures()
+    rows = manifest_figures()
     dets = json.loads((ROOT / "docs/art/cover_dets.json").read_text())
     photo = Image.open(ROOT / "docs/art" / dets["file"]).convert("RGB")
     assert photo.size == (dets["width"], dets["height"]), photo.size
@@ -153,16 +162,17 @@ def render_cover():
     ph = photo.copy()
     pd = ImageDraw.Draw(ph)
     ft = font(15)
+    placed = []
     for x, y, w, h, cls, score in dets["dets"]:
         c = PALETTE[cls % 8]
         x, y, w, h = round(x), round(y), round(w), round(h)
         pd.rectangle([x, y, x + w - 1, y + h - 1], outline=c, width=3)
         label = f"{COCO80[cls]} {max(0, min(100, round(score * 100)))}%"
         l, t, r, b = pd.textbbox((0, 0), label, font=ft)
-        tw, th = r - l, 15 + 6
-        ty = y - th if y - th >= 0 else y
-        x = max(0, min(x, photo.width - (tw + 12)))   # keep the tab inside the photo
-        pd.rectangle([x, ty, x + tw + 12 - 1, ty + th - 1], fill=c)
+        tw, th = r - l + 12, 15 + 6
+        x, ty, _, _ = place_label_tab((x, y, w, h), tw, th, placed, photo.width)
+        placed.append((x, ty, tw, th))
+        pd.rectangle([x, ty, x + tw - 1, ty + th - 1], fill=c)
         pd.text((x + 6 - l, ty + (th - (b - t)) // 2 - t), label, font=ft, fill=lum_dark_text(c))
     paste_round(im, ph, (px, py), 16)
 
@@ -171,9 +181,7 @@ def render_cover():
     im.paste(icon, (56, 64), icon)
     d.text((56, 236), "YOLO26 Detector", font=font(50), fill=WHITE)
     sub = font(22)
-    for i, line in enumerate(["Real-time object detection", "· 80 COCO classes · MaixCAM"]):
-        pass
-    d.text((56, 312), "Real-time object detection ·", font=sub, fill=MUTED)
+    d.text((56, 312), "Real-time object detection", font=sub, fill=MUTED)
     d.text((56, 342), "80 COCO classes · MaixCAM", font=sub, fill=MUTED)
 
     # figures tile
@@ -181,8 +189,7 @@ def render_cover():
     draw_round(im, (tx0, ty0, tx1, ty1), 14, PANEL)
     chip = font(20)
     big = font(30)
-    small = font(22)
-    for i, (tag, txt, f) in enumerate([("320", fps_txt, big), ("640", map_txt, small)]):
+    for i, (tag, txt, f) in enumerate([("320", rows[0], big), ("640", rows[1], big)]):
         cy = ty0 + 22 + i * 72
         draw_round(im, (tx0 + 20, cy, tx0 + 20 + 64, cy + 44), 10, ACCENT if i == 0 else (54, 60, 70))
         l, t, r, b = d.textbbox((0, 0), tag, font=chip)

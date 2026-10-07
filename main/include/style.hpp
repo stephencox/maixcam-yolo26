@@ -1,11 +1,15 @@
 // UI style ("style C"): colours, per-class palette, label text. Pure C++,
 // host-tested; main.cpp converts Rgb to the SDK colour type.
 #pragma once
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <string>
+#include <vector>
+
+#include "controls.hpp"
 
 namespace y26
 {
@@ -55,5 +59,21 @@ namespace y26
         char buf[16];
         std::snprintf(buf, sizeof buf, " %ld%%", p);
         return name + buf;
+    }
+
+    // Label tab placement: above the box by default; inside the box top when
+    // that would leave the screen or overlap an already-placed tab (an inside
+    // tab is kept even if it collides, so a label is never hidden). Clamped to
+    // the screen width. scripts/render_art.py mirrors this rule for the cover.
+    inline Rect place_label_tab(const Rect &box, int tab_w, int tab_h, const std::vector<Rect> &placed,
+                                int screen_w, int /*screen_h*/)
+    {
+        int x = std::max(0, std::min(box.x, screen_w - tab_w));
+        Rect above{x, box.y - tab_h, tab_w, tab_h};
+        bool hit = above.y < 0;
+        for (const Rect &p : placed)
+            if (above.x < p.x + p.w && p.x < above.x + above.w && above.y < p.y + p.h && p.y < above.y + above.h)
+                hit = true;
+        return hit ? Rect{x, box.y, tab_w, tab_h} : above;
     }
 }
