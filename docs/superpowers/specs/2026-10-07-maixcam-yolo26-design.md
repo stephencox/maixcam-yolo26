@@ -146,6 +146,21 @@ English. All on-screen text comes from `strings.hpp`.
    `maix::nn::YOLO26::detect` passes the `.mud` mean/scale to
    `forward_image` itself, so the `.mud` values are what normalise input. Calibration: 500 COCO val2017 images chosen by a fixed seed;
    the list of file names is committed.
+   **Precision: INT8 backbone + BF16 head** (`/model.23/`, 42 ops, via
+   `--quantize_table`, generated from the mlir by `convert.sh`). Pure INT8
+   dropped ~8 mAP50 points (7.96 at 320): the class-logit calibration
+   ranges are ±114 / ±92 (background logits down to −196) and the class
+   branch activations reach ~260, so INT8 steps are far too coarse.
+   Clipping the class logits to ±8 did not help, because TPU-MLIR keeps the
+   conv's own threshold in front of the Clip; forcing that threshold too made
+   it worse (8.68). Measured cost of the BF16 head at 320: about +2 ms per
+   inference (111.3 vs 109.2 ms) and about +0.2 MB (2.89 vs 2.69 MB).
+   The file name keeps `_int8` so the `.mud` contract is unchanged.
+   The Python decoder mirror (`decode.py`) used for scoring matches the
+   board exactly: the board letterboxes with **nearest-neighbour**
+   (`Image::resize` default method under FIT_CONTAIN, verified
+   byte-identical), and boxes are **truncated to int** where `nn::Object`
+   stores them (after the input-space proposal and after `_correct_bbox`).
 4. **Verify.**
    - Simulator: INT8 vs FP32 on a fixed set of 50 COCO val images; mAP50
      drop ≤ 3 points, and TPU-MLIR's per-layer cosine check passes.
