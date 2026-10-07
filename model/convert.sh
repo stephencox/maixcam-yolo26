@@ -16,7 +16,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 W="$HERE/work/$SIZE"
 IMG=maixcam-yolo26/tpu_mlir:1.28.1
 docker image inspect "$IMG" >/dev/null 2>&1 || docker build -t "$IMG" - <<'EOF'
-FROM sophgo/tpuc_dev:latest
+FROM sophgo/tpuc_dev@sha256:d46a29a349f10c893fddc089b2433da5b8ef2a0bce52b81419064bf3e26a31a0
 RUN pip install --no-cache-dir tpu_mlir[onnx]==1.28.1
 EOF
 rm -rf "$W/cali" && mkdir -p "$W/cali"

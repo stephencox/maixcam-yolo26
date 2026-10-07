@@ -4,6 +4,8 @@
 set -euo pipefail
 MODE=${1:-build}
 PIN=db6b17821b900c97eaa899be548ddc1cba0dd635
+# sipeed/maixcdk-builder:latest as of 2026-10-07
+BUILDER=sipeed/maixcdk-builder@sha256:20c16e9ad2650de563d1d2f9a73cee029c01c553b94b7e036ba910f542e3dba9
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 SDK=${MAIXCDK_CACHE:-$HOME/.cache/maixcam-yolo26/MaixCDK}
 if [ ! -d "$SDK/.git" ]; then
@@ -22,4 +24,4 @@ esac
 docker run --rm --network=host -e MAIXCDK_PATH=/opt/MaixCDK \
     -v "$SDK":/opt/MaixCDK -v "$REPO":/work/app \
     --user "$(id -u):$(id -g)" -e HOME=/tmp \
-    --entrypoint bash sipeed/maixcdk-builder -c "cd /work/app && $CMD"
+    --entrypoint bash "$BUILDER" -c "cd /work/app && $CMD"

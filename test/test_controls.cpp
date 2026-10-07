@@ -51,7 +51,7 @@ TEST(hit_test_edges)
     CHECK(hit_test(l, -1, -1) == Button::None);
 }
 
-TEST(press_edge_fires_once_while_held)   // Review Focus 1
+TEST(press_edge_fires_once_while_held)
 {
     PressEdge p;
     CHECK(!p.update(false));
@@ -82,7 +82,7 @@ TEST(threshold_persistence_round_trip)
     CHECK_EQ(Threshold::from_pct_string("60").pct(), 60);
 }
 
-TEST(threshold_bad_persisted_values_fall_back)   // Review Focus 2
+TEST(threshold_bad_persisted_values_fall_back)
 {
     CHECK_EQ(Threshold::from_pct_string("").pct(), 50);
     CHECK_EQ(Threshold::from_pct_string("abc").pct(), 50);
@@ -101,7 +101,7 @@ TEST(model_size)
     CHECK(other(ModelSize::S640) == ModelSize::S320);
     CHECK(parse_model_size("320") == ModelSize::S320);
     CHECK(parse_model_size("640") == ModelSize::S640);
-    CHECK(!parse_model_size("1024").has_value());   // Review Focus 2
+    CHECK(!parse_model_size("1024").has_value());
     CHECK(!parse_model_size("").has_value());
     CHECK_EQ(to_string(ModelSize::S640), std::string("640"));
 }

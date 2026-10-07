@@ -11,7 +11,7 @@ TEST(max_plus_one)
     CHECK_EQ(next_snapshot_index({"yolo26_007.jpg"}), 8);
 }
 
-TEST(ignores_odd_names)   // Review Focus 3
+TEST(ignores_odd_names)
 {
     CHECK_EQ(next_snapshot_index({"yolo26_.jpg", "yolo26_12a.jpg", "yolo26_5.png", "notes.txt",
                                   "yolo26_-3.jpg", "Yolo26_9.jpg", "yolo26_99999999999999.jpg"}), 1);

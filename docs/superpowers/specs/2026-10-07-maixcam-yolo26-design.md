@@ -59,7 +59,7 @@ test/                    host tests for the pure headers (plain g++, no SDK)
 model/                   export + quantisation pipeline (§5), MANIFEST.md
 .github/workflows/       ci.yml, release.yml
 .gitattributes           LFS patterns
-justfile                 test, build, deploy, smoke, models, release
+justfile                 test, build, release-local, deploy, smoke, models
 CHANGELOG.md
 README.md                usage, build, manual test checklist, release checklist
 ```
@@ -71,8 +71,9 @@ Anything that makes a decision lives in a pure header and is host-tested.
 
 ### 4.1 Frame loop
 
-1. `cam.read()` at display resolution (552×368), pixel format from
-   `detector.input_format()`.
+1. `cam.read()` at display resolution (552×368), RGB888 (hard-coded: the
+   detector may be null at camera init, so its `input_format()` is not
+   consulted).
 2. `detector.detect(img, conf_th, iou_th = 0.45)`; time **only this call** →
    inference latency.
 3. Draw each box plus `"<label> <score>"`.
@@ -89,7 +90,7 @@ zero; ignores non-positive durations.
 |---|---|---|
 | top-left | `< Exit` | `app::set_exit_flag(true)` |
 | top-right | `320` / `640` | switch model (§4.3) |
-| bottom-left | `conf −` / value / `conf +` | step 0.05, clamp to [0.45, 0.95], default 0.50 (floor: `nn::YOLO26` drops logits < −0.2, i.e. conf < 0.45, before thresholding) |
+| bottom-left | `-` / `+` buttons with a `conf` label and value between them | step 0.05, clamp to [0.45, 0.95], default 0.50 (floor: `nn::YOLO26` drops logits < −0.2, i.e. conf < 0.45, before thresholding) |
 | bottom-right | `Snapshot` | §4.4 |
 | status line | `FPS 24.1 \| 38 ms \| 320` (ASCII; `-` when no data) | from `FpsMeter` and current model |
 
@@ -122,8 +123,8 @@ English. All on-screen text comes from `strings.hpp`.
 
 ### 4.5 Error handling
 
-- No model loadable at startup: full-screen message naming the missing
-  file; Exit still works; no crash loop.
+- No model loadable at startup: a message naming the missing file is drawn
+  over the live camera frame (ruling R20); Exit still works; no crash loop.
 - Any exception inside an iteration: log it, skip that frame, continue.
 - The loop ends only on Exit or `app::need_exit()`.
 
@@ -196,9 +197,10 @@ Plain g++, `-Wall -Wextra -Werror`, ASan + UBSan.
 
 ### On the board
 
-- `just deploy`: build, `scp` to the board over USB (`<board-usb-ip>`),
+- `just deploy`: build (`just release-local`), `scp` to the board over USB (`<board-usb-ip>`),
   `app_store install`.
-- `just smoke`: run the §5 board verification against the installed models.
+- `just smoke [size]`: run the §5 board verification (board vs simulator
+  compare) with the app closed.
 - README manual checklist: each button, model switch both ways, snapshot
   written, both languages render, Exit returns to the launcher.
 
@@ -213,7 +215,7 @@ Plain g++, `-Wall -Wextra -Werror`, ASan + UBSan.
 
 - Fail unless the tag, `app.yaml` `version`, and the top `CHANGELOG.md`
   entry all match.
-- `maixcdk release -P maixcam`; attach `yolo26_detect_vX.Y.Z.zip` and its
+- `maixcdk release -p maixcam`; attach `yolo26_detect_vX.Y.Z.zip` and its
   `.sha256` to the GitHub Release.
 - The model pipeline does **not** run in CI; CI packages the committed LFS
   models.

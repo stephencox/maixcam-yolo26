@@ -2,9 +2,8 @@
 
 Real-time COCO object detection on the MaixCAM using YOLO26n, with an INT8
 model at 320 or 640 input, on-screen touch controls, and snapshots. The UI is
-available in English and Chinese. It follows the stock detector app
-(app 123), which is the predecessor; the MaixHub listing link will be added
-once the app is published.
+available in English and Chinese. It is the successor to my MaixHub app 123 (YOLOv11n 320, MaixPy); the MaixHub
+listing link will be added once the app is published.
 
 ## Controls
 
@@ -38,10 +37,24 @@ Needs Docker, Git LFS, and an ssh alias `maixcam` for the board.
 
 ## Rebuilding models
 
+Prerequisites: a Linux GPU box reachable over ssh (default `GPU=192.168.12.30`;
+override with `GPU=host just models 640`) with Docker, COCO val2017 and its
+annotations at `~/coco`, and `model/.venv` created with `uv` on the box.
+
 `just models 320` or `just models 640` exports, converts (INT8 with a BF16
-head) and runs the simulator mAP gate on the GPU box. Then run the board
-compare (`model/compare_board.py`, see `model/MANIFEST.md`) and update
+head) and runs the simulator mAP gate on the GPU box. Then run
+`just smoke 320` (or `640`) for the board-vs-simulator compare and update
 `model/MANIFEST.md` with the results.
+
+`just smoke` copies the model and the 10 images in `model/board_images/` to the
+board, runs `model/board_detect.py` there and compares with the simulator output
+(`model/compare_board.py`). Run it only with the app closed (the launcher is
+fine: it uses the NPU, not the camera), never while `yolo26_detect` is running.
+Both `just deploy` and `just smoke` use the `BOARD` ssh host (default
+`maixcam`; override with `BOARD=host just deploy`).
+
+`model/board_images/` are 10 COCO val2017 images under their original Flickr
+licences (COCO terms of use), not Apache-2.0.
 
 ## Manual test checklist
 

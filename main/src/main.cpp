@@ -15,7 +15,11 @@
 #include <dirent.h>
 #include <sys/stat.h>
 
+#include <algorithm>
+#include <cstdio>
 #include <memory>
+#include <string>
+#include <vector>
 
 using namespace maix;
 
@@ -88,16 +92,8 @@ static bool save_snapshot(image::Image &img)
     return img.save(path.c_str()) == err::ERR_NONE;
 }
 
-int main()
+static int run(display::Display &disp, touchscreen::TouchScreen &ts, y26::Lang lang)
 {
-    y26::Lang lang = y26::lang_from_locale(i18n::get_locale());
-    if (image::load_font("ui", kFont, 22) == err::ERR_NONE)
-        image::set_default_font("ui");
-    else
-        log::warn("font %s not loaded; Chinese text may not render", kFont);
-
-    display::Display disp;
-    touchscreen::TouchScreen ts;
     const int sw = disp.width(), sh = disp.height();
     const y26::Layout layout = y26::make_layout(sw, sh);
 
@@ -105,16 +101,18 @@ int main()
     y26::Threshold conf = y26::Threshold::from_pct_string(app::get_app_config_kv(kCfg, "conf", "50"));
 
     show_message(disp, sw, sh, y26::tr(y26::Str::Loading, lang), image::COLOR_WHITE);
+    // Camera first: if the model load below runs short of memory, the 320 fallback still has a camera.
+    camera::Camera cam(sw, sh, image::FMT_RGB888);
     std::unique_ptr<nn::YOLO26> det = try_load(size);
     Toast toast;
     if (!det && size == y26::ModelSize::S640)
     {
         size = y26::ModelSize::S320;
         det = try_load(size);
+        app::set_app_config_kv(kCfg, "model", y26::to_string(size));
         toast.show(y26::tr(y26::Str::Fallback320, lang), image::COLOR_YELLOW, 2000);
     }
 
-    camera::Camera cam(sw, sh, image::FMT_RGB888);
     y26::FpsMeter meter;
     y26::PressEdge edge;
     uint64_t last_us = time::ticks_us();
@@ -158,6 +156,7 @@ int main()
                 }
                 app::set_app_config_kv(kCfg, "model", y26::to_string(size));
                 last_us = time::ticks_us();                   // don't count the load in FPS
+                meter = y26::FpsMeter{};
                 break;
             }
             case y26::Button::Snapshot:
@@ -226,4 +225,56 @@ int main()
         }
     }
     return 0;
+}
+
+int main()
+{
+    std::unique_ptr<display::Display> disp;
+    std::unique_ptr<touchscreen::TouchScreen> ts;
+    try
+    {
+        y26::Lang lang = y26::lang_from_locale(i18n::get_locale());
+        if (image::load_font("ui", kFont, 22) == err::ERR_NONE)
+            image::set_default_font("ui");
+        else
+            log::warn("font %s not loaded; Chinese text may not render", kFont);
+        disp = std::make_unique<display::Display>();
+        ts = std::make_unique<touchscreen::TouchScreen>();
+        return run(*disp, *ts, lang);
+    }
+    catch (const std::exception &e)
+    {
+        log::error("fatal: %s", e.what());
+        // Show the error and wait for Exit / the launcher; no crash loop.
+        try
+        {
+            if (disp)
+            {
+                const y26::Layout layout = y26::make_layout(disp->width(), disp->height());
+                while (!app::need_exit())
+                {
+                    image::Image screen(disp->width(), disp->height(), image::FMT_RGB888);
+                    screen.clear();
+                    screen.draw_string(16, disp->height() / 2 - 12, std::string("Error: ") + e.what(), image::COLOR_RED);
+                    draw_button(screen, layout.exit, "Exit");
+                    disp->show(screen);
+                    int tx = 0, ty = 0;
+                    bool pressed = false;
+                    if (ts)
+                        ts->read(tx, ty, pressed);
+                    if (pressed && y26::hit_test(layout, tx, ty) == y26::Button::Exit)
+                        app::set_exit_flag(true);
+                    time::sleep_ms(50);
+                }
+            }
+            else
+                while (!app::need_exit())
+                    time::sleep_ms(100);
+        }
+        catch (const std::exception &e2)
+        {
+            log::error("error screen failed: %s", e2.what());
+        }
+        return 1;
+    }
 }

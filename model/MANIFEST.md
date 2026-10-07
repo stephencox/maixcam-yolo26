@@ -9,7 +9,7 @@ values bumps the app's minor version.
 | Ultralytics | `8.4.174` | same |
 | ONNX opset | 17 | 17 |
 | Cut outputs | bbox `/model.23/one2one_cv2.{0,1,2}/one2one_cv2.{0,1,2}.2/Conv_output_0`, cls `/model.23/one2one_cv3.{0,1,2}/one2one_cv3.{0,1,2}.2/Conv_output_0` | `/model.23/one2one_cv2.{0,1,2}/one2one_cv2.{0,1,2}.2/Conv_output_0` (bbox), `/model.23/one2one_cv3.{0,1,2}/one2one_cv3.{0,1,2}.2/Conv_output_0` (cls); same names as 320 |
-| TPU-MLIR | tpu_mlir[onnx]==1.28.1 on sophgo/tpuc_dev (built image `sha256:2509cc15a3fe394f8d20aa83f908a938863557bdd42ee1dc9d7500450c4e09a9`) | same (image `sha256:2509cc15a3fe394f8d20aa83f908a938863557bdd42ee1dc9d7500450c4e09a9`) |
+| TPU-MLIR | tpu_mlir[onnx]==1.28.1 on sophgo/tpuc_dev (built image `sha256:2509cc15a3fe394f8d20aa83f908a938863557bdd42ee1dc9d7500450c4e09a9`; base image pinned `sophgo/tpuc_dev@sha256:d46a29a349f10c893fddc089b2433da5b8ef2a0bce52b81419064bf3e26a31a0`) | same (image `sha256:2509cc15a3fe394f8d20aa83f908a938863557bdd42ee1dc9d7500450c4e09a9`) |
 | Precision | INT8 + BF16 head (/model.23, 42 ops via `--quantize_table`) | INT8 + BF16 head (/model.23, 42 ops via `--quantize_table`) |
 | Calibration | 500 imgs, `lists/calib.txt` sha256 `11abd28d6ff2ea551b052322813fe7587185fc94f818eb474771aadc651547fe` | 500 imgs, `lists/calib.txt` (same list as 320) |
 | FP32 mAP50 (50 eval imgs, conf 0.45) | 0.2603 (board-exact decoder: nearest-neighbour letterbox, int boxes) | 0.3779 (board-exact decoder) |
@@ -28,3 +28,7 @@ values bumps the app's minor version.
 - BF16 for `/model.22/` + `/model.23/`: drop 0.74 pts but 3.36 MB; the `/model.23/` head alone is enough.
 
 (Pure INT8 and the Clip variants were measured with a bilinear letterbox and float boxes; the shipped numbers above use the board-exact decoder.)
+
+Build container for the app: `sipeed/maixcdk-builder@sha256:20c16e9ad2650de563d1d2f9a73cee029c01c553b94b7e036ba910f542e3dba9` (pinned in `scripts/build.sh`).
+
+`model/board_images/` are 10 COCO val2017 images under their original Flickr licences (COCO terms of use), not Apache-2.0.
