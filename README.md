@@ -1,3 +1,5 @@
+![YOLO26 Detector: INT8 detections on a COCO val2017 photo](docs/art/cover.png)
+
 # YOLO26 Detector
 
 Real-time COCO object detection on the MaixCAM using YOLO26n, with an INT8
@@ -14,8 +16,10 @@ listing link will be added once the app is published.
 | `320` / `640` | Switch model size (the button shows the current size). Shows "Loading..." during the switch |
 | `Snapshot` | Save the current frame to `/root/snapshots/yolo26_N.jpg` |
 
-The threshold and model size are remembered between launches. The status line
-shows FPS, latency and the model size (`-` until the first numbers arrive).
+The threshold and model size are remembered between launches. The status
+pill at the top shows FPS and latency, e.g. `8.9 fps | 111 ms` (`-` until the
+first numbers arrive). Boxes are coloured per class with a label tab such as
+`person 91%`.
 
 Notes:
 
@@ -56,15 +60,25 @@ Both `just deploy` and `just smoke` use the `BOARD` ssh host (default
 `model/board_images/` are 10 COCO val2017 images under their original Flickr
 licences (COCO terms of use), not Apache-2.0.
 
+## Credits
+
+Cover photo: "Montreal Motorcycle Cop" by Gerry Lauzon
+([Flickr](https://www.flickr.com/photos/bikeman04/7933423348/)), licensed
+[CC BY 2.0](https://creativecommons.org/licenses/by/2.0/), via COCO 2017 val
+(image 538364). The detections drawn on it are real INT8 640 model output
+(`docs/art/cover_dets.json`). The cover image `docs/art/cover.png` is a derivative
+(cropped into a layout, boxes and text added) and is shared under the same
+licence, CC BY 2.0. `just art` re-renders the cover and the launcher icon.
+
 ## Manual test checklist
 
 Run after `just deploy`, from the launcher. Tick each item.
 
-1. [ ] Launch from the launcher; the status line shows `-` then numbers within 2 s.
-2. [ ] Point at a person: a red box labelled `person`.
+1. [ ] Launch from the launcher; the status pill shows `-` then numbers within 2 s.
+2. [ ] Point at a person: a coral box with a `person NN%` tab.
 3. [ ] `+` up to 0.95: fewer boxes. `-` down to 0.45, and it stops there.
 4. [ ] Exit and relaunch: threshold and model size are remembered.
-5. [ ] Tap `320`: "Loading..." appears, then the button reads `640`; FPS drops and the status shows `640`. Hold the finger on the button through the load: it switches once only.
+5. [ ] Tap `320`: "Loading..." appears, then the button reads `640`; FPS drops and the status pill shows the lower FPS. Hold the finger on the button through the load: it switches once only.
 6. [ ] Rename `/maixapp/apps/yolo26_detect/assets/yolo26n_640_int8.cvimodel`, then tap `320`: a yellow fallback message appears and it stays on 320. Restore the file.
 7. [ ] Tap Snapshot twice: "Saved" appears twice; `ssh maixcam ls /root/snapshots` shows `yolo26_1.jpg` and `yolo26_2.jpg`; open one: boxes present, no buttons.
 8. [ ] Settings, Language, 中文, then relaunch: Chinese labels render (no boxes or tofu).
