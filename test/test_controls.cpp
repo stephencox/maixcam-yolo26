@@ -27,12 +27,40 @@ static void check_layout(int sw, int sh)
     for (size_t i = 0; i < r.size(); ++i)
         for (size_t j = i + 1; j < r.size(); ++j)
             CHECK(!overlap(r[i], r[j]));
-    CHECK(l.status_y > l.exit.y + l.exit.h);
-    CHECK(l.status_y < l.conf_down.y);
+    // status pill: in bounds, not over any button, above the bottom row
+    const Rect &st = l.status;
+    CHECK(st.x >= 0 && st.y >= 0 && st.x + st.w <= sw && st.y + st.h <= sh);
+    CHECK(st.w > 0 && st.h > 0);
+    for (auto &b : r) CHECK(!overlap(st, b));
+    CHECK(st.y + st.h <= l.conf_down.y);
 }
 
 TEST(layout_552x368) { check_layout(552, 368); }
 TEST(layout_320x240) { check_layout(320, 240); }
+TEST(layout_narrow_192x240) { check_layout(192, 240); }
+
+TEST(status_pill_on_top_row_when_gap_wide)
+{
+    for (auto sz : {std::pair<int, int>{552, 368}, {320, 240}})
+    {
+        Layout l = make_layout(sz.first, sz.second);
+        int gap = l.model.x - (l.exit.x + l.exit.w);
+        CHECK(l.status.w >= 100);
+        CHECK_EQ(l.status.h, l.exit.h);
+        CHECK_EQ(l.status.y, l.exit.y);
+        CHECK_EQ(l.status.w, gap - 8);
+        CHECK_EQ(l.status.x, l.exit.x + l.exit.w + 4);   // centred in the gap
+        CHECK(l.status.h >= 48);
+    }
+}
+
+TEST(status_pill_second_row_when_gap_narrow)
+{
+    Layout l = make_layout(192, 240);
+    CHECK_EQ(l.status.x, 4);
+    CHECK_EQ(l.status.h, 32);
+    CHECK(l.status.y >= l.exit.y + l.exit.h);
+}
 
 TEST(hit_test_edges)
 {

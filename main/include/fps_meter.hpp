@@ -46,13 +46,13 @@ namespace y26
         Ring frames_, infers_;
     };
 
-    inline std::string format_status(std::optional<double> fps, std::optional<double> latency_ms, int model_px)
+    inline std::string format_status(std::optional<double> fps, std::optional<double> latency_ms)
     {
         char f[16] = "-", l[16] = "-";
         if (fps) std::snprintf(f, sizeof f, "%.1f", *fps);
         if (latency_ms) std::snprintf(l, sizeof l, "%.0f", *latency_ms);
         char out[64];
-        std::snprintf(out, sizeof out, "FPS %s | %s ms | %d", f, l, model_px);
+        std::snprintf(out, sizeof out, "%s fps | %s ms", f, l);
         return out;
     }
 }

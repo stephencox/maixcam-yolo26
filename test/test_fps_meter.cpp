@@ -50,12 +50,14 @@ TEST(latency_independent_of_fps)
 
 TEST(format_status_values)
 {
-    CHECK_EQ(y26::format_status(24.06, 38.4, 320), std::string("FPS 24.1 | 38 ms | 320"));
+    CHECK_EQ(y26::format_status(24.06, 38.4), std::string("24.1 fps | 38 ms"));
+    CHECK_EQ(y26::format_status(8.93, 111.3), std::string("8.9 fps | 111 ms"));
 }
 
 TEST(format_status_missing)
 {
-    CHECK_EQ(y26::format_status(std::nullopt, std::nullopt, 640), std::string("FPS - | - ms | 640"));
+    CHECK_EQ(y26::format_status(std::nullopt, std::nullopt), std::string("- fps | - ms"));
+    CHECK_EQ(y26::format_status(5.0, std::nullopt), std::string("5.0 fps | - ms"));
 }
 
 int main() { return check::run_all(); }
