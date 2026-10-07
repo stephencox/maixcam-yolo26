@@ -92,7 +92,13 @@ zero; ignores non-positive durations.
 | top-right | `320` / `640` | switch model (§4.3) |
 | bottom-left | `-` / `+` buttons with a `conf` label and value between them | step 0.05, clamp to [0.45, 0.95], default 0.50 (floor: `nn::YOLO26` drops logits < −0.2, i.e. conf < 0.45, before thresholding) |
 | bottom-right | `Snapshot` | §4.4 |
-| status line | `FPS 24.1 \| 38 ms \| 320` (ASCII; `-` when no data) | from `FpsMeter` and current model |
+| status pill | `8.9 fps \| 111 ms` (ASCII; `- fps \| - ms` when no data; model size is on the model button) | from `FpsMeter`. Top row, centred between Exit and Model; if that gap leaves under 100 px, a 32 px second row under the top row |
+
+Visual style ("style C", `style.hpp`): boxes are 3 px in a per-class colour
+(8-colour palette, class id mod 8, person = coral accent `#FF5A4E`) with a filled
+label tab (`person 91%`) above the box, or inside its top edge at the frame top.
+Buttons, the conf group, the status pill and toasts are filled `#1D2127` rounded
+panels with white text; Snapshot is filled coral.
 
 Touch targets are at least 48 px tall. A press triggers on the press edge
 only (no repeat while held). Layout rectangles and hit-testing are defined in

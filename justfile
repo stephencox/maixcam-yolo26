@@ -50,3 +50,7 @@ smoke size="320":
     scp model/board_images/*.jpg {{board}}:/root/y26/imgs/
     ssh {{board}} 'cd /root/y26 && python3 board_detect.py yolo26n_{{size}}.mud imgs 0.45' | sed -n 's/^Y26JSON //p' > model/work/{{size}}/board.json
     python3 model/compare_board.py model/work/{{size}}/sim_board.json model/work/{{size}}/board.json
+
+# Re-render the launcher icon and README cover (deterministic; needs network once for the pinned font)
+art:
+    uv run --with pillow==12.3.0 python3 scripts/render_art.py --check

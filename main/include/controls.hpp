@@ -18,12 +18,13 @@ namespace y26
     struct Layout
     {
         Rect exit, model, conf_down, conf_value, conf_up, snapshot;
-        int status_x, status_y;
+        Rect status;   // pill: top row between Exit and Model, or a second row when too narrow
     };
 
     // Top row: Exit (left), Model (right). Bottom row: conf -, value, conf + (left),
-    // Snapshot (right). Status line under the top row. Sizes scale with the screen
-    // but never drop below 48 px tall.
+    // Snapshot (right). Status pill centred in the gap between Exit and Model
+    // (button height); if that pill would be under 100 px wide it moves to a
+    // 32 px second row under the top row. Buttons never drop below 48 px tall.
     inline Layout make_layout(int sw, int sh)
     {
         const int m = 4;
@@ -37,8 +38,12 @@ namespace y26
         l.conf_value = {m + unit, bottom, unit * 3 / 2, bh};
         l.conf_up = {m + unit + unit * 3 / 2, bottom, unit, bh};
         l.snapshot = {sw - m - unit * 2, bottom, unit * 2, bh};
-        l.status_x = m * 2;
-        l.status_y = top + bh + m * 2;
+        const int gap_l = l.exit.x + l.exit.w, gap_r = l.model.x;
+        const int pill_w = gap_r - gap_l - 2 * m;
+        if (pill_w >= 100)
+            l.status = {gap_l + m, top, pill_w, bh};
+        else
+            l.status = {m, top + bh + m, std::min(sw - 2 * m, 160), 32};
         return l;
     }
 
