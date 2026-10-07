@@ -1,0 +1,41 @@
+name: release
+on:
+  push:
+    tags: ["v*.*.*"]
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      # Guard against an LFS pointer (~130 bytes) being packaged instead of the real model.
+      - name: Check models are real files
+        run: |
+          for m in assets/yolo26n_320_int8.cvimodel assets/yolo26n_640_int8.cvimodel; do
+            test "$(stat -c%s "$m")" -gt 100000 || { echo "$m is not a real model (LFS pointer?)"; exit 1; }
+          done
+      - uses: extractions/setup-just@v2
+      - run: scripts/check_release.sh "${GITHUB_REF_NAME}"
+      - run: just test
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/maixcam-yolo26
+          key: maixcdk-db6b17821b900c97eaa899be548ddc1cba0dd635
+      - run: scripts/build.sh release
+      - name: Collect package
+        run: |
+          shopt -s nullglob
+          zips=(dist/*.zip)
+          [ ${#zips[@]} -eq 1 ] || { echo "expected 1 zip, got: ${zips[*]}"; exit 1; }
+          out="yolo26_detect_${GITHUB_REF_NAME}.zip"
+          cp "${zips[0]}" "$out"
+          unzip -l "$out" | grep -q 'assets/yolo26n_320_int8.cvimodel'
+          unzip -l "$out" | grep -q 'assets/yolo26n_640_int8.cvimodel'
+          unzip -l "$out" | grep -q 'yolo26_detect$'
+          sha256sum "$out" > "$out.sha256"
+      - run: gh release create "${GITHUB_REF_NAME}" "yolo26_detect_${GITHUB_REF_NAME}.zip" "yolo26_detect_${GITHUB_REF_NAME}.zip.sha256" --title "${GITHUB_REF_NAME}" --notes "See CHANGELOG.md"
+        env:
+          GH_TOKEN: ${{ github.token }}

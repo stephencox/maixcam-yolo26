@@ -59,4 +59,9 @@ Run after `just deploy`, from the launcher. Tick each item.
 
 ## Release checklist
 
-To be filled in by the release task (Task 11).
+1. `just test`; `just deploy`; full manual checklist passes; board vs sim compare passes for both sizes.
+2. Bump `app.yaml` `version`, add the `CHANGELOG.md` entry with today's date, commit.
+3. `git tag vX.Y.Z && git push origin main vX.Y.Z`; wait for the `release` workflow to go green.
+4. Download `yolo26_detect_vX.Y.Z.zip` from the GitHub Release; verify its sha256.
+5. Upload it at maixhub.com/app (new version of `yolo26_detect`), paste the CHANGELOG entry as notes.
+6. Install from MaixHub on the board via the app store and run checklist items 1, 2, 9.

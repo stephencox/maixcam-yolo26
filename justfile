@@ -10,6 +10,7 @@ test:
         n=$(basename "$t" .cpp); \
         {{cxx}} {{cxxflags}} "$t" -o "test/bin/$n" && "test/bin/$n"; \
     done
+    bash test/test_check_release.sh
 
 gpu := env_var_or_default("GPU", "192.168.12.30")
 
