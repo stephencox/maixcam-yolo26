@@ -82,3 +82,25 @@ def test_non_square_decode_inverts_pad_and_clamps_to_image():
     assert np.allclose(dets[0][:4], (544, 0, 96, 64), atol=1e-4)
     # class 7: image (160, 256, 128, 128) -> bottom clamp to 320 -> (160, 256, 128, 64)
     assert np.allclose(dets[1][:4], (160, 256, 128, 64), atol=1e-4)
+
+def test_boxes_truncate_to_int_like_nn_object():
+    # nn::Object has int x/y/w/h: C++ truncates toward zero after the
+    # input-space proposal and again after _correct_bbox, before _clamp_bbox.
+    # 640x427 into 320: scale 0.5, pad_w 0, pad_h (320 - 213.5) / 2 = 53.25.
+    out = blank(320)
+    out["c32"][0, 4, 1, 3] = 2.0                        # cell (ax=3, ay=1): centre (112, 48)
+    out["b32"][0, :, 1, 3] = [0.3, 0.2, 0.45, 0.6]      # input (102.4, 41.6, 24, 25.6)
+    (x, y, w, h, cid, _), = decode(out, NAMES, 320, conf=0.5, img_w=640, img_h=427)
+    # input ints (102, 41, 24, 25) -> image x 204, y (41 - 53.25) / 0.5 = -24.5
+    # -> int -24 (toward zero, floor would give -25), w 48, h 50 -> clamp y: h 26
+    assert cid == 4 and (x, y, w, h) == (204, 0, 48, 26)
+    assert all(type(v) is int for v in (x, y, w, h))
+
+def test_boxes_truncate_positive_image_coords():
+    # 427x427 into 320: scale 320/427 (float32 0.7494145), no pad.
+    out = blank(320)
+    out["c32"][0, 9, 2, 2] = 2.0                        # cell (2, 2): centre (80, 80)
+    out["b32"][0, :, 2, 2] = [1.0, 1.0, 1.0, 1.0]      # input (48, 48, 64, 64)
+    (x, y, w, h, *_), = decode(out, NAMES, 320, conf=0.5, img_w=427, img_h=427)
+    # 48 / 0.7494145 = 64.05 -> 64; 64 / 0.7494145 = 85.40 -> 85
+    assert (x, y, w, h) == (64, 64, 85, 85)
