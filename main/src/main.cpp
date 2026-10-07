@@ -10,6 +10,7 @@
 #include "controls.hpp"
 #include "fps_meter.hpp"
 #include "snapshot.hpp"
+#include "style.hpp"
 #include "strings.hpp"
 
 #include <dirent.h>
@@ -63,11 +64,53 @@ static std::unique_ptr<nn::YOLO26> try_load(y26::ModelSize m)
     }
 }
 
-static void draw_button(image::Image &img, const y26::Rect &r, const std::string &text)
+static image::Color col(y26::Rgb c) { return image::Color::from_rgb(c.r, c.g, c.b); }
+
+// Filled rounded rect: two overlapping rects plus four filled circles.
+static void fill_round_rect(image::Image &img, const y26::Rect &r, int radius, y26::Rgb c)
 {
-    img.draw_rect(r.x, r.y, r.w, r.h, image::COLOR_WHITE, 2);
+    int rad = std::min(radius, std::min(r.w, r.h) / 2);
+    image::Color k = col(c);
+    img.draw_rect(r.x + rad, r.y, r.w - 2 * rad, r.h, k, -1);
+    img.draw_rect(r.x, r.y + rad, r.w, r.h - 2 * rad, k, -1);
+    img.draw_circle(r.x + rad, r.y + rad, rad, k, -1);
+    img.draw_circle(r.x + r.w - 1 - rad, r.y + rad, rad, k, -1);
+    img.draw_circle(r.x + rad, r.y + r.h - 1 - rad, rad, k, -1);
+    img.draw_circle(r.x + r.w - 1 - rad, r.y + r.h - 1 - rad, rad, k, -1);
+}
+
+static y26::Rect inset(const y26::Rect &r, int d) { return {r.x + d, r.y + d, r.w - 2 * d, r.h - 2 * d}; }
+
+static void draw_centered(image::Image &img, const y26::Rect &r, const std::string &text, y26::Rgb c, int dy = 0)
+{
     image::Size ts = image::string_size(text);
-    img.draw_string(r.x + (r.w - ts.width()) / 2, r.y + (r.h - ts.height()) / 2, text, image::COLOR_WHITE);
+    img.draw_string(r.x + (r.w - ts.width()) / 2, r.y + (r.h - ts.height()) / 2 + dy, text, col(c));
+}
+
+static void draw_button(image::Image &img, const y26::Rect &r, const std::string &text, y26::Rgb fill = y26::kPanel)
+{
+    fill_round_rect(img, inset(r, 1), 10, fill);
+    draw_centered(img, r, text, y26::kText);
+}
+
+// Detection box with a filled label tab above it (inside the box top if it would leave the frame).
+static void draw_detection(image::Image &img, const nn::Object &o, const std::string &name)
+{
+    y26::Rgb c = y26::class_color(o.class_id);
+    img.draw_rect(o.x, o.y, o.w, o.h, col(c), 3);
+    std::string label = y26::format_label(name, o.score);
+    image::Size ts = image::string_size(label);
+    y26::Rect tab{o.x, o.y - (ts.height() + 6), ts.width() + 12, ts.height() + 6};
+    if (tab.y < 0)
+        tab.y = o.y;
+    img.draw_rect(tab.x, tab.y, tab.w, tab.h, col(c), -1);
+    img.draw_string(tab.x + 6, tab.y + 3, label, col(y26::label_text_color(c)));
+}
+
+static void draw_pill(image::Image &img, const y26::Rect &r, const std::string &text, y26::Rgb text_color)
+{
+    fill_round_rect(img, r, r.h / 2, y26::kPanel);
+    draw_centered(img, r, text, text_color);
 }
 
 static void show_message(display::Display &disp, int sw, int sh, const std::string &text, image::Color c)
@@ -178,12 +221,7 @@ static int run(display::Display &disp, touchscreen::TouchScreen &ts, y26::Lang l
                 std::unique_ptr<std::vector<nn::Object>> objs(det->detect(*img, conf.value(), 0.45f));
                 infer_ms = (time::ticks_us() - t0) / 1000.0;
                 for (const auto &o : *objs)
-                {
-                    img->draw_rect(o.x, o.y, o.w, o.h, image::COLOR_RED, 3);
-                    char msg[64];
-                    snprintf(msg, sizeof msg, "%s %.2f", det->labels[o.class_id].c_str(), o.score);
-                    img->draw_string(o.x, std::max(0, o.y - 24), msg, image::COLOR_RED);
-                }
+                    draw_detection(*img, o, det->labels[o.class_id]);
             }
             else
             {
@@ -205,13 +243,26 @@ static int run(display::Display &disp, touchscreen::TouchScreen &ts, y26::Lang l
             draw_button(*img, layout.model, y26::to_string(size));
             draw_button(*img, layout.conf_down, "-");
             draw_button(*img, layout.conf_up, "+");
-            img->draw_string(layout.conf_value.x + 6, layout.conf_value.y + 4, y26::tr(y26::Str::Conf, lang), image::COLOR_WHITE);
-            img->draw_string(layout.conf_value.x + 6, layout.conf_value.y + layout.conf_value.h / 2, confs, image::COLOR_WHITE);
-            draw_button(*img, layout.snapshot, y26::tr(y26::Str::Snapshot, lang));
-            img->draw_string(layout.status_x, layout.status_y,
-                             y26::format_status(meter.fps(), meter.latency_ms(), y26::pixels(size)), image::COLOR_GREEN);
+            fill_round_rect(*img, inset(layout.conf_value, 1), 10, y26::kPanel);
+            {
+                const y26::Rect &cv = layout.conf_value;
+                std::string pct = std::to_string(conf.pct()) + "%";
+                image::Size t1 = image::string_size(y26::tr(y26::Str::Conf, lang));
+                image::Size t2 = image::string_size(pct);
+                int top = cv.y + (cv.h - (t1.height() + t2.height())) / 2;
+                img->draw_string(cv.x + (cv.w - t1.width()) / 2, top, y26::tr(y26::Str::Conf, lang),
+                                 col(y26::Rgb{170, 176, 184}));
+                img->draw_string(cv.x + (cv.w - t2.width()) / 2, top + t1.height(), pct, col(y26::kText));
+            }
+            draw_button(*img, layout.snapshot, y26::tr(y26::Str::Snapshot, lang), y26::kAccent);
+            draw_pill(*img, layout.status, y26::format_status(meter.fps(), meter.latency_ms()), y26::kText);
             if (time::ticks_ms() < toast.until_ms)
-                img->draw_string(layout.status_x, layout.status_y + 32, toast.text, toast.color);
+            {
+                image::Size tsz = image::string_size(toast.text);
+                y26::Rect tr{layout.status.x, layout.status.y + layout.status.h + 4, tsz.width() + 24, tsz.height() + 10};
+                fill_round_rect(*img, tr, tr.h / 2, y26::kPanel);
+                img->draw_string(tr.x + 12, tr.y + 5, toast.text, toast.color);
+            }
 
             disp.show(*img);
 
