@@ -10,11 +10,15 @@ LOGIT_THRESHOLD = -0.2
 def letterbox(img_rgb: np.ndarray, size: int):
     h, w = img_rgb.shape[:2]
     scale = min(size / w, size / h)
-    nw, nh = round(w * scale), round(h * scale)
+    # Board FIT_CONTAIN: cv::resize(img, tmp, cv::Size(), scale, scale,
+    # INTER_LINEAR) with a float scale; the output size follows from fx/fy.
+    f = float(np.float32(scale))
+    resized = cv2.resize(img_rgb, None, fx=f, fy=f, interpolation=cv2.INTER_LINEAR)
+    nh, nw = resized.shape[:2]
     px, py = (size - nw) / 2.0, (size - nh) / 2.0
     canvas = np.zeros((size, size, 3), np.uint8)
     x0, y0 = int(px), int(py)
-    canvas[y0:y0 + nh, x0:x0 + nw] = cv2.resize(img_rgb, (nw, nh), interpolation=cv2.INTER_LINEAR)
+    canvas[y0:y0 + nh, x0:x0 + nw] = resized
     x = canvas.astype(np.float32).transpose(2, 0, 1) / 255.0
     return x, float(scale), float(px), float(py)
 

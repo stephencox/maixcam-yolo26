@@ -6,7 +6,7 @@ dependencies = [
   "ultralytics==8.4.174",
   "onnx>=1.16",
   "onnxruntime>=1.18",
-  "onnxsim>=0.4.36",
+  "onnxslim==0.1.97",
   "numpy>=1.26",
   "opencv-python-headless>=4.9",
   "pycocotools>=2.0.7",
