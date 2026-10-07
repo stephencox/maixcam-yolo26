@@ -134,4 +134,17 @@ TEST(model_size)
     CHECK_EQ(to_string(ModelSize::S640), std::string("640"));
 }
 
+TEST(status_row_split_boundary_99_vs_100)
+{
+    bool saw99 = false, saw100 = false;
+    for (int sw = 150; sw <= 400; ++sw)
+    {
+        Layout l = make_layout(sw, 240);
+        int pill_w = l.model.x - (l.exit.x + l.exit.w) - 8;
+        if (pill_w == 99) { saw99 = true; CHECK_EQ(l.status.h, 32); CHECK(l.status.y > l.exit.y); }
+        if (pill_w == 100) { saw100 = true; CHECK_EQ(l.status.y, l.exit.y); CHECK_EQ(l.status.w, 100); }
+    }
+    CHECK(saw99 && saw100);
+}
+
 int main() { return check::run_all(); }

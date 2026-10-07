@@ -95,22 +95,22 @@ static void draw_button(image::Image &img, const y26::Rect &r, const std::string
 
 // Detection box with a filled label tab above it (inside the box top if it would leave the frame).
 static void draw_detection(image::Image &img, const nn::Object &o, const std::string &name,
-                           std::vector<y26::Rect> &placed, int sw, int sh)
+                           std::vector<y26::Rect> &placed, int sw)
 {
     y26::Rgb c = y26::class_color(o.class_id);
     img.draw_rect(o.x, o.y, o.w, o.h, col(c), 3);
     std::string label = y26::format_label(name, o.score);
     image::Size ts = image::string_size(label);
-    y26::Rect tab = y26::place_label_tab({o.x, o.y, o.w, o.h}, ts.width() + 12, ts.height() + 6, placed, sw, sh);
+    y26::Rect tab = y26::place_label_tab({o.x, o.y, o.w, o.h}, ts.width() + 12, ts.height() + 6, placed, sw);
     placed.push_back(tab);
     img.draw_rect(tab.x, tab.y, tab.w, tab.h, col(c), -1);
-    img.draw_string(tab.x + 6, tab.y + 3, label, col(y26::label_text_color(c)));
+    img.draw_string(tab.x + 6, tab.y + 3, label, col(y26::kText));
 }
 
-static void draw_pill(image::Image &img, const y26::Rect &r, const std::string &text, y26::Rgb text_color)
+static void draw_pill(image::Image &img, const y26::Rect &r, const std::string &text)
 {
-    fill_round_rect(img, r, r.h / 2, y26::kPanel);
-    draw_centered(img, r, text, text_color);
+    fill_round_rect(img, inset(r, 1), (r.h - 2) / 2, y26::kPanel);
+    draw_centered(img, r, text, y26::kText);
 }
 
 static void show_message(display::Display &disp, int sw, int sh, const std::string &text, image::Color c)
@@ -222,7 +222,7 @@ static int run(display::Display &disp, touchscreen::TouchScreen &ts, y26::Lang l
                 infer_ms = (time::ticks_us() - t0) / 1000.0;
                 std::vector<y26::Rect> placed;
                 for (const auto &o : *objs)
-                    draw_detection(*img, o, det->labels[o.class_id], placed, sw, sh);
+                    draw_detection(*img, o, det->labels[o.class_id], placed, sw);
             }
             else
             {
@@ -238,8 +238,6 @@ static int run(display::Display &disp, touchscreen::TouchScreen &ts, y26::Lang l
                            ok ? image::COLOR_GREEN : image::COLOR_RED, 1500);
             }
 
-            char confs[32];
-            snprintf(confs, sizeof confs, "%.2f", conf.value());
             draw_button(*img, layout.exit, y26::tr(y26::Str::Exit, lang));
             draw_button(*img, layout.model, y26::to_string(size));
             draw_button(*img, layout.conf_down, "-");
@@ -252,11 +250,11 @@ static int run(display::Display &disp, touchscreen::TouchScreen &ts, y26::Lang l
                 image::Size t2 = image::string_size(pct);
                 int top = cv.y + (cv.h - (t1.height() + t2.height())) / 2;
                 img->draw_string(cv.x + (cv.w - t1.width()) / 2, top, y26::tr(y26::Str::Conf, lang),
-                                 col(y26::Rgb{170, 176, 184}));
+                                 col(y26::kMuted));
                 img->draw_string(cv.x + (cv.w - t2.width()) / 2, top + t1.height(), pct, col(y26::kText));
             }
             draw_button(*img, layout.snapshot, y26::tr(y26::Str::Snapshot, lang), y26::kAccent);
-            draw_pill(*img, layout.status, y26::format_status(meter.fps(), meter.latency_ms()), y26::kText);
+            draw_pill(*img, layout.status, y26::format_status(meter.fps(), meter.latency_ms()));
             if (time::ticks_ms() < toast.until_ms)
             {
                 image::Size tsz = image::string_size(toast.text);

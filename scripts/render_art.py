@@ -5,7 +5,9 @@ Deterministic: --check renders everything twice and fails if the PNG bytes diffe
 Needs network once, to fetch Noto Sans Bold at a pinned commit into
 ~/.cache/maixcam-yolo26/fonts/ (sha256 verified; the font is not committed).
 The cover reads its two headline figures from model/MANIFEST.md and errors if
-they cannot be parsed. Style constants mirror main/include/style.hpp.
+they cannot be parsed. Style constants and place_label_tab mirror
+main/include/style.hpp BY HAND: the cover is illustrative, so the two can drift,
+and both must be updated together.
 """
 import hashlib
 import io
@@ -27,10 +29,9 @@ ACCENT = (255, 90, 78)
 PANEL = (29, 33, 39)
 BG = (21, 24, 29)
 WHITE = (255, 255, 255)
-DARK = (16, 20, 24)
 MUTED = (170, 176, 184)
-PALETTE = [ACCENT, (46, 196, 182), (255, 193, 69), (155, 93, 229),
-           (76, 201, 240), (167, 201, 87), (241, 91, 181), (255, 140, 66)]
+PALETTE = [(229, 57, 44), (22, 137, 127), (183, 121, 31), (123, 63, 196),
+           (31, 127, 174), (94, 127, 37), (194, 51, 127), (196, 90, 18)]
 COCO80 = [n.strip() for n in (
     "person|bicycle|car|motorcycle|airplane|bus|train|truck|boat|traffic light|fire hydrant|stop sign|"
     "parking meter|bench|bird|cat|dog|horse|sheep|cow|elephant|bear|zebra|giraffe|backpack|umbrella|"
@@ -120,12 +121,6 @@ def rounded_mask(size, radius, k=4):
     return m.resize(size, Image.LANCZOS)
 
 
-def lum_dark_text(c):
-    lin = lambda v: (v / 255 / 12.92) if v / 255 <= 0.04045 else ((v / 255 + 0.055) / 1.055) ** 2.4
-    y = 0.2126 * lin(c[0]) + 0.7152 * lin(c[1]) + 0.0722 * lin(c[2])
-    return DARK if y > 0.5 else WHITE
-
-
 def paste_round(base, im, xy, radius):
     base.paste(im, xy, rounded_mask(im.size, radius))
 
@@ -173,7 +168,7 @@ def render_cover():
         x, ty, _, _ = place_label_tab((x, y, w, h), tw, th, placed, photo.width)
         placed.append((x, ty, tw, th))
         pd.rectangle([x, ty, x + tw - 1, ty + th - 1], fill=c)
-        pd.text((x + 6 - l, ty + (th - (b - t)) // 2 - t), label, font=ft, fill=lum_dark_text(c))
+        pd.text((x + 6 - l, ty + (th - (b - t)) // 2 - t), label, font=ft, fill=WHITE)
     paste_round(im, ph, (px, py), 16)
 
     # left column

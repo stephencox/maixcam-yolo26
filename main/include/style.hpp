@@ -21,17 +21,17 @@ namespace y26
     inline constexpr Rgb kAccent{255, 90, 78};   // #FF5A4E coral
     inline constexpr Rgb kPanel{29, 33, 39};     // #1D2127
     inline constexpr Rgb kText{255, 255, 255};
-    inline constexpr Rgb kDarkText{16, 20, 24};  // #101418
+    inline constexpr Rgb kMuted{170, 176, 184};  // secondary text
 
     inline constexpr std::array<Rgb, 8> kClassPalette{{
-        kAccent,
-        {46, 196, 182},    // teal   #2EC4B6
-        {255, 193, 69},    // amber  #FFC145
-        {155, 93, 229},    // violet #9B5DE5
-        {76, 201, 240},    // sky    #4CC9F0
-        {167, 201, 87},    // lime   #A7C957
-        {241, 91, 181},    // pink   #F15BB5
-        {255, 140, 66},    // orange #FF8C42
+        {229, 57, 44},     // coral  #E5392C
+        {22, 137, 127},    // teal   #16897F
+        {183, 121, 31},    // amber  #B7791F
+        {123, 63, 196},    // violet #7B3FC4
+        {31, 127, 174},    // sky    #1F7FAE
+        {94, 127, 37},     // lime   #5E7F25
+        {194, 51, 127},    // pink   #C2337F
+        {196, 90, 18},     // orange #C45A12
     }};
 
     inline Rgb class_color(int class_id)
@@ -40,16 +40,8 @@ namespace y26
         return kClassPalette[static_cast<std::size_t>(class_id) % kClassPalette.size()];
     }
 
-    // Relative luminance (sRGB, Rec.709 weights); dark text on light fills.
-    inline Rgb label_text_color(Rgb bg)
-    {
-        auto lin = [](uint8_t v) {
-            double c = v / 255.0;
-            return c <= 0.04045 ? c / 12.92 : std::pow((c + 0.055) / 1.055, 2.4);
-        };
-        double y = 0.2126 * lin(bg.r) + 0.7152 * lin(bg.g) + 0.0722 * lin(bg.b);
-        return y > 0.5 ? kDarkText : kText;
-    }
+    // Label text is always kText (white); every palette colour keeps >= 3:1
+    // contrast against it (bold labels count as large text), checked in tests.
 
     inline std::string format_label(const std::string &name, float score)
     {
@@ -66,7 +58,7 @@ namespace y26
     // tab is kept even if it collides, so a label is never hidden). Clamped to
     // the screen width. scripts/render_art.py mirrors this rule for the cover.
     inline Rect place_label_tab(const Rect &box, int tab_w, int tab_h, const std::vector<Rect> &placed,
-                                int screen_w, int /*screen_h*/)
+                                int screen_w)
     {
         int x = std::max(0, std::min(box.x, screen_w - tab_w));
         Rect above{x, box.y - tab_h, tab_w, tab_h};
