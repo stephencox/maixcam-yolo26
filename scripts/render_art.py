@@ -1,4 +1,5 @@
-"""Render the launcher icon (assets/app.png) and README cover (docs/art/cover.png).
+"""Render the launcher icon (assets/app.png), the README cover (docs/art/cover.png)
+and the 4:3 MaixHub listing cover (docs/art/cover_4x3.png).
 
 Run: uv run --with pillow==12.3.0 python3 scripts/render_art.py [--check]
 Deterministic: --check renders everything twice and fails if the PNG bytes differ.
@@ -142,34 +143,53 @@ def place_label_tab(box, tw, th, placed, sw):
     return (x, y0, tw, th) if hit else above
 
 
-def render_cover():
-    rows = manifest_figures()
+def draw_dets(photo, dets, scale, font_px):
+    """Photo scaled by `scale` with the real INT8 detections, drawn like the app."""
+    ph = photo.resize((round(photo.width * scale), round(photo.height * scale)), Image.LANCZOS)
+    pd = ImageDraw.Draw(ph)
+    ft = font(font_px)
+    pad = round(font_px * 0.4)
+    placed = []
+    for x, y, w, h, cls, score in dets["dets"]:
+        c = PALETTE[cls % 8]
+        x, y, w, h = round(x * scale), round(y * scale), round(w * scale), round(h * scale)
+        pd.rectangle([x, y, x + w - 1, y + h - 1], outline=c, width=max(3, round(3 * scale)))
+        label = f"{COCO80[cls]} {max(0, min(100, round(score * 100)))}%"
+        l, t, r, b = pd.textbbox((0, 0), label, font=ft)
+        tw, th = r - l + 2 * pad, font_px + pad
+        x, ty, _, _ = place_label_tab((x, y, w, h), tw, th, placed, ph.width)
+        placed.append((x, ty, tw, th))
+        pd.rectangle([x, ty, x + tw - 1, ty + th - 1], fill=c)
+        pd.text((x + pad - l, ty + (th - (b - t)) // 2 - t), label, font=ft, fill=WHITE)
+    return ph
+
+
+def load_photo():
     dets = json.loads((ROOT / "docs/art/cover_dets.json").read_text())
     photo = Image.open(ROOT / "docs/art" / dets["file"]).convert("RGB")
     assert photo.size == (dets["width"], dets["height"]), photo.size
+    return photo, dets
+
+
+def draw_figure_row(im, d, x, y, tag, txt, first, chip, f):
+    draw_round(im, (x, y, x + 64, y + 44), 10, ACCENT if first else (54, 60, 70))
+    l, t, r, b = d.textbbox((0, 0), tag, font=chip)
+    d.text((x + 32 - (l + r) / 2, y + 22 - (t + b) / 2), tag, font=chip, fill=WHITE)
+    l, t, r, b = d.textbbox((0, 0), txt, font=f)
+    d.text((x + 84 - l, y + 22 - (t + b) / 2), txt, font=f, fill=WHITE)
+
+
+def render_cover():
+    """Wide README banner, 1200x630."""
+    rows = manifest_figures()
+    photo, dets = load_photo()
 
     W, H = 1200, 630
     im = Image.new("RGB", (W, H), BG)
     d = ImageDraw.Draw(im)
 
-    # photo with real INT8 detections, drawn like the app
-    px, py = W - photo.width - 40, (H - photo.height) // 2
-    ph = photo.copy()
-    pd = ImageDraw.Draw(ph)
-    ft = font(15)
-    placed = []
-    for x, y, w, h, cls, score in dets["dets"]:
-        c = PALETTE[cls % 8]
-        x, y, w, h = round(x), round(y), round(w), round(h)
-        pd.rectangle([x, y, x + w - 1, y + h - 1], outline=c, width=3)
-        label = f"{COCO80[cls]} {max(0, min(100, round(score * 100)))}%"
-        l, t, r, b = pd.textbbox((0, 0), label, font=ft)
-        tw, th = r - l + 12, 15 + 6
-        x, ty, _, _ = place_label_tab((x, y, w, h), tw, th, placed, photo.width)
-        placed.append((x, ty, tw, th))
-        pd.rectangle([x, ty, x + tw - 1, ty + th - 1], fill=c)
-        pd.text((x + 6 - l, ty + (th - (b - t)) // 2 - t), label, font=ft, fill=WHITE)
-    paste_round(im, ph, (px, py), 16)
+    ph = draw_dets(photo, dets, 1.0, 15)
+    paste_round(im, ph, (W - ph.width - 40, (H - ph.height) // 2), 16)
 
     # left column
     icon = render_icon(150)
@@ -182,21 +202,45 @@ def render_cover():
     # figures tile
     tx0, ty0, tx1, ty1 = 56, 410, 56 + 430, 410 + 170
     draw_round(im, (tx0, ty0, tx1, ty1), 14, PANEL)
-    chip = font(20)
-    big = font(30)
-    for i, (tag, txt, f) in enumerate([("320", rows[0], big), ("640", rows[1], big)]):
-        cy = ty0 + 22 + i * 72
-        draw_round(im, (tx0 + 20, cy, tx0 + 20 + 64, cy + 44), 10, ACCENT if i == 0 else (54, 60, 70))
-        l, t, r, b = d.textbbox((0, 0), tag, font=chip)
-        d.text((tx0 + 20 + 32 - (l + r) / 2, cy + 22 - (t + b) / 2), tag, font=chip, fill=WHITE)
-        l, t, r, b = d.textbbox((0, 0), txt, font=f)
-        d.text((tx0 + 104 - l, cy + 22 - (t + b) / 2), txt, font=f, fill=WHITE)
+    for i, (tag, txt) in enumerate([("320", rows[0]), ("640", rows[1])]):
+        draw_figure_row(im, d, tx0 + 20, ty0 + 22 + i * 72, tag, txt, i == 0, font(20), font(30))
+    return im
+
+
+def render_cover_4x3():
+    """MaixHub listing cover, 4:3 (1200x900, shown at 400x300)."""
+    rows = manifest_figures()
+    photo, dets = load_photo()
+
+    W, H = 1200, 900
+    im = Image.new("RGB", (W, H), BG)
+    d = ImageDraw.Draw(im)
+
+    # header: icon + title + subtitle
+    icon = render_icon(150)
+    im.paste(icon, (48, 36), icon)
+    d.text((224, 44), "YOLO26 Detector", font=font(72), fill=WHITE)
+    d.text((228, 140), "Real-time detection · 80 classes · MaixCAM", font=font(30), fill=MUTED)
+
+    # photo: 4:3, full width below the header, figures overlaid along the bottom
+    ph = draw_dets(photo, dets, 1104 / photo.width, 26)     # 1104x828 -> crop to fit
+    top = 216
+    ph = ph.crop((0, 0, ph.width, H - top - 48))
+    paste_round(im, ph, (48, top), 20)
+
+    # figures strip across the bottom of the photo
+    sx0, sy1 = 48, H - 48
+    sy0 = sy1 - 96
+    draw_round(im, (sx0 + 20, sy0 - 20, sx0 + 1104 - 20, sy1 - 20), 16, PANEL)
+    for i, (tag, txt) in enumerate([("320", rows[0]), ("640", rows[1])]):
+        draw_figure_row(im, d, sx0 + 44 + i * 540, sy0 + 6, tag, txt, i == 0, font(22), font(30))
     return im
 
 
 def main():
     check = "--check" in sys.argv
-    outs = {ROOT / "assets/app.png": render_icon, ROOT / "docs/art/cover.png": render_cover}
+    outs = {ROOT / "assets/app.png": render_icon, ROOT / "docs/art/cover.png": render_cover,
+            ROOT / "docs/art/cover_4x3.png": render_cover_4x3}
     for path, fn in outs.items():
         data = png_bytes(fn())
         if check and png_bytes(fn()) != data:
