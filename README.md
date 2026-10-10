@@ -4,8 +4,9 @@
 
 Real-time COCO object detection on the MaixCAM using YOLO26n, with an INT8
 model at 320 or 640 input, on-screen touch controls, and snapshots. The UI is
-available in English and Chinese. It is the successor to my MaixHub app 123 (YOLOv11n 320, MaixPy); the MaixHub
-listing link will be added once the app is published.
+available in English and Chinese. Install it from MaixHub:
+[maixhub.com/app/394](https://maixhub.com/app/394). It is the successor to my
+[MaixHub app 123](https://maixhub.com/app/123) (YOLOv11n 320, MaixPy).
 
 ## Controls
 
@@ -90,5 +91,5 @@ Run after `just deploy`, from the launcher. Tick each item.
 2. Bump `app.yaml` `version`, add the `CHANGELOG.md` entry with today's date, commit.
 3. `git tag vX.Y.Z && git push origin main vX.Y.Z`; wait for the `release` workflow to go green.
 4. Download `yolo26_detect_vX.Y.Z.zip` from the GitHub Release; verify its sha256.
-5. Upload it at maixhub.com/app (new version of `yolo26_detect`), paste the CHANGELOG entry as notes.
+5. Upload it at [maixhub.com/app/394](https://maixhub.com/app/394) (new version of `yolo26_detect`), paste the CHANGELOG entry as notes.
 6. Install from MaixHub on the board via the app store and run checklist items 1, 2, 9.
